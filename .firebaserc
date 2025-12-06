@@ -1,0 +1,24 @@
+# Fichiers Firebase
+.firebase/
+.firebaserc
+firebase-debug.log
+
+# Fichiers de build
+frontend/dist/
+backend/dist/
+
+# Dépendances
+node_modules/
+**/node_modules/
+
+# Environnement
+.env.local
+.env.production.local
+
+# Base de données
+*.sqlite
+backend/database.sqlite
+
+# Logs
+*.log
+npm-debug.log*

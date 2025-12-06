@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Générateur d'icônes YOU CAISSE</title>
+</head>
+<body style="margin: 0; padding: 20px; font-family: Arial, sans-serif;">
+  <h2>Générateur d'icônes YOU CAISSE PRO</h2>
+  <p>1. Cliquez sur chaque bouton pour télécharger les icônes</p>
+  <p>2. Placez les fichiers dans: <code>frontend/public/</code></p>
+  
+  <div style="margin: 20px 0;">
+    <button onclick="downloadIcon(192)" style="padding: 10px 20px; margin: 10px; cursor: pointer;">
+      📥 Télécharger icon-192.png
+    </button>
+    <button onclick="downloadIcon(512)" style="padding: 10px 20px; margin: 10px; cursor: pointer;">
+      📥 Télécharger icon-512.png
+    </button>
+  </div>
+
+  <canvas id="canvas" style="border: 1px solid #ccc; margin-top: 20px;"></canvas>
+
+  <script>
+    function createIcon(size) {
+      const canvas = document.getElementById('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Fond gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#667eea');
+      gradient.addColorStop(0.5, '#764ba2');
+      gradient.addColorStop(1, '#f093fb');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+
+      // Texte YOU
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${size * 0.25}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('YOU', size / 2, size * 0.4);
+
+      // Emoji caisse
+      ctx.font = `${size * 0.35}px Arial`;
+      ctx.fillText('💰', size / 2, size * 0.7);
+
+      return canvas;
+    }
+
+    function downloadIcon(size) {
+      const canvas = createIcon(size);
+      canvas.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `icon-${size}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert(`icon-${size}.png téléchargé! Placez-le dans frontend/public/`);
+      });
+    }
+
+    // Afficher un aperçu
+    window.onload = function() {
+      createIcon(512);
+    };
+  </script>
+</body>
+</html>
