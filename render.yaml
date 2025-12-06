@@ -2,50 +2,45 @@ services:
   # Base de données PostgreSQL
   - type: pserv
     name: you-caisse-db
-    env: docker
     plan: free
     region: frankfurt
-    databases:
-      - name: youcaisse
-        user: youcaisse_user
+    databaseName: youcaisse
+    databaseUser: youcaisse_user
 
   # Backend API
   - type: web
     name: you-caisse-backend
-    env: docker
+    runtime: docker
     region: frankfurt
     plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
+    buildCommand: echo "Building with Docker"
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3001
+        value: 10000
       - key: DATABASE_URL
         fromDatabase:
           name: you-caisse-db
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
-      - key: CORS_ORIGIN
-        fromService:
-          name: you-caisse-frontend
-          type: web
-          property: host
-    healthCheckPath: /api/health
+    healthCheckPath: /
 
   # Frontend
   - type: web
     name: you-caisse-frontend
-    env: docker
+    runtime: docker
     region: frankfurt
     plan: free
     dockerfilePath: ./frontend/Dockerfile
     dockerContext: ./frontend
+    buildCommand: echo "Building with Docker"
     envVars:
       - key: VITE_API_URL
         fromService:
-          name: you-caisse-backend
           type: web
-          envVarKey: RENDER_EXTERNAL_URL
+          name: you-caisse-backend
+          property: host
