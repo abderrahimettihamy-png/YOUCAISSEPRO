@@ -13,6 +13,12 @@ build/
 backend/database.sqlite
 backend/database.sqlite-journal
 
+# Fichiers de licence (IMPORTANT - NE JAMAIS PARTAGER!)
+.license/
+*.key
+backend/.license/
+backend/src/utils/license.ts
+
 # Backups (déjà sauvegardés séparément)
 backups/
 *.backup

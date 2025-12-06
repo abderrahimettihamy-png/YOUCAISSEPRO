@@ -92,7 +92,7 @@ export const userService = {
 };
 
 export const orderService = {
-  create: async (data: { items: Array<{ productId?: number; productName: string; quantity: number; price: number }>; clientName?: string; notes?: string }): Promise<{ orderId: number; total: number; ticketNumber: string }> => {
+  create: async (data: { items: Array<{ productId?: number; productName: string; quantity: number; price: number }>; clientName?: string; mealTime?: string; notes?: string }): Promise<{ orderId: number; total: number; ticketNumber: string }> => {
     const response = await api.post('/orders', data);
     return response.data;
   },
@@ -226,6 +226,11 @@ export const printerService = {
 
   delete: async (id: number) => {
     await api.delete(`/printers/${id}`);
+  },
+
+  test: async (id: number) => {
+    const response = await api.post(`/printers/${id}/test`);
+    return response.data;
   },
 };
 

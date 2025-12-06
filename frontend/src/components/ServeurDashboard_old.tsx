@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { categoryService, productService, orderService, printService } from '../services/api';
 import type { Category, Product } from '../types';
-import { useAuth } from '../context/AuthContext';
+// import { useAuth } from '../context/AuthContext';
 
 interface CartItem {
   productId: number;
@@ -12,7 +12,7 @@ interface CartItem {
 }
 
 export default function ServeurDashboard() {
-  const { user } = useAuth();
+  // const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);

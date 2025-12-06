@@ -1,9 +1,11 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
 import { AuthRequest } from '../middleware/auth';
+import { ThermalPrintService } from '../utils/thermalPrintService';
 
 const dbGet = (sql: string, params: any[] = []): Promise<any> => {
   return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('Database not initialized'));
     db.get(sql, params, (err, row) => {
       if (err) reject(err);
       else resolve(row);
@@ -13,6 +15,7 @@ const dbGet = (sql: string, params: any[] = []): Promise<any> => {
 
 const dbAll = (sql: string, params: any[] = []): Promise<any[]> => {
   return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('Database not initialized'));
     db.all(sql, params, (err, rows) => {
       if (err) reject(err);
       else resolve(rows);
@@ -71,14 +74,33 @@ export class PrintController {
         );
 
         if (barPrinter) {
-          // Ici, vous pouvez intégrer la logique d'impression réelle
-          // Pour le moment, nous simulons l'impression
-          results.printed.push({
-            destination: 'BAR',
-            printer: barPrinter.name,
-            items: barItems.length,
-            status: 'success'
-          });
+          // Impression réelle sur imprimante thermique
+          try {
+            const success = await ThermalPrintService.printTicket(barPrinter, {
+              ticketNumber: order.ticketNumber,
+              clientName: order.clientName,
+              mealTime: order.mealTime,
+              notes: order.notes,
+              items: barItems,
+              serveur: `${order.prenom} ${order.nom}`,
+              destination: 'BAR',
+              createdAt: order.createdAt
+            });
+
+            if (success) {
+              results.printed.push({
+                destination: 'BAR',
+                printer: barPrinter.name,
+                items: barItems.length,
+                status: 'success'
+              });
+            } else {
+              results.errors.push({ destination: 'BAR', error: 'Échec impression physique' });
+            }
+          } catch (error) {
+            console.error('Erreur impression BAR:', error);
+            results.errors.push({ destination: 'BAR', error: 'Erreur impression thermique' });
+          }
         } else {
           results.errors.push({ destination: 'BAR', error: 'Aucune imprimante BAR active' });
         }
@@ -91,12 +113,33 @@ export class PrintController {
         );
 
         if (cuisinePrinter) {
-          results.printed.push({
-            destination: 'CUISINE',
-            printer: cuisinePrinter.name,
-            items: cuisineItems.length,
-            status: 'success'
-          });
+          // Impression réelle sur imprimante thermique
+          try {
+            const success = await ThermalPrintService.printTicket(cuisinePrinter, {
+              ticketNumber: order.ticketNumber,
+              clientName: order.clientName,
+              mealTime: order.mealTime,
+              notes: order.notes,
+              items: cuisineItems,
+              serveur: `${order.prenom} ${order.nom}`,
+              destination: 'CUISINE',
+              createdAt: order.createdAt
+            });
+
+            if (success) {
+              results.printed.push({
+                destination: 'CUISINE',
+                printer: cuisinePrinter.name,
+                items: cuisineItems.length,
+                status: 'success'
+              });
+            } else {
+              results.errors.push({ destination: 'CUISINE', error: 'Échec impression physique' });
+            }
+          } catch (error) {
+            console.error('Erreur impression CUISINE:', error);
+            results.errors.push({ destination: 'CUISINE', error: 'Erreur impression thermique' });
+          }
         } else {
           results.errors.push({ destination: 'CUISINE', error: 'Aucune imprimante CUISINE active' });
         }

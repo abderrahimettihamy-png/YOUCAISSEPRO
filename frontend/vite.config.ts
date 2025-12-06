@@ -4,6 +4,27 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    middlewareMode: false,
+    hmr: {
+      protocol: 'ws',
+      host: '0.0.0.0',
+      port: 5173
+    }
+  },
+  build: {
+    minify: 'terser',
+    sourcemap: false,
+    reportCompressedSize: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          axios: ['axios']
+        }
+      }
+    }
+  },
   plugins: [
     react(),
     VitePWA({

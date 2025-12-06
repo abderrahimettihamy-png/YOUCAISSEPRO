@@ -6,11 +6,15 @@ import { Order, OrderItem } from '../../../shared/types';
 export class OrderController {
   static async create(req: AuthRequest, res: Response) {
     try {
-      const { items, clientName, notes } = req.body;
+      const { items, clientName, mealTime, notes } = req.body;
       const serveurId = req.user!.id;
 
       if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Articles requis' });
+      }
+
+      if (!mealTime) {
+        return res.status(400).json({ error: 'Heure du service requise' });
       }
 
       const total = items.reduce((sum: number, item: any) => {
@@ -24,14 +28,15 @@ export class OrderController {
       const ticketNumber = `${dateStr}-${random}`;
 
       const result = await dbRun(
-        "INSERT INTO orders (ticketNumber, serveurId, createdById, total, clientName, notes, status) VALUES (?, ?, ?, ?, ?, ?, 'en_attente')",
-        [ticketNumber, serveurId, serveurId, total, clientName || null, notes || null]
+        "INSERT INTO orders (ticketNumber, serveurId, createdById, total, clientName, mealTime, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente')",
+        [ticketNumber, serveurId, serveurId, total, clientName || null, mealTime, notes || null]
       );
 
       const orderId = (result as any).lastID;
 
       for (const item of items) {
         const itemTotal = item.price * item.quantity;
+        
         await dbRun(
           'INSERT INTO order_items (orderId, productId, productName, quantity, price, total, addedById) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [orderId, item.productId || null, item.productName, item.quantity, item.price, itemTotal, serveurId]
@@ -64,14 +69,44 @@ export class OrderController {
         SELECT o.*, 
                u1.nom as createdByNom, u1.prenom as createdByPrenom,
                u2.nom as paidByNom, u2.prenom as paidByPrenom,
-               u1.username as serveurName
+               u1.username as serveurName,
+               u1.prenom || ' ' || u1.nom as createdByName
         FROM orders o
         JOIN users u1 ON o.createdById = u1.id
         LEFT JOIN users u2 ON o.paidBy = u2.id
         ORDER BY o.createdAt DESC
       `);
 
-      res.json(orders);
+      // Récupérer les items pour chaque commande avec categoryType
+      const ordersWithItems = await Promise.all(
+        orders.map(async (order: any) => {
+          const items = await dbAll(`
+            SELECT oi.*, 
+                   p.name as productName,
+                   c.type as categoryType
+            FROM order_items oi
+            LEFT JOIN products p ON oi.productId = p.id
+            LEFT JOIN categories c ON p.categoryId = c.id
+            WHERE oi.orderId = ?
+          `, [order.id]);
+          
+          // Assigner une catégorie par défaut si manquante basée sur le nom du produit
+          const itemsWithDefaults = items.map((item: any) => {
+            if (!item.categoryType) {
+              // Palabras clés pour détecter les boissons
+              const boissonsKeywords = ['café', 'café', 'thé', 'jus', 'eau', 'bière', 'vin', 'alcool', 'boisson', 'soda', 'smoothie', 'cocktail'];
+              const productName = (item.productName || '').toLowerCase();
+              const isBeverage = boissonsKeywords.some(keyword => productName.includes(keyword));
+              item.categoryType = isBeverage ? 'boissons' : 'repas';
+            }
+            return item;
+          });
+          
+          return { ...order, items: itemsWithDefaults };
+        })
+      );
+
+      res.json(ordersWithItems);
     } catch (error) {
       console.error('Erreur getAll orders:', error);
       res.status(500).json({ error: 'Erreur serveur' });

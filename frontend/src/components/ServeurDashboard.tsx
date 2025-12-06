@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { categoryService, productService, orderService, printService } from '../services/api';
 import type { Category, Product, Order } from '../types';
+import PrinterManagement from './PrinterManagement';
 
 interface CartItem {
   productId: number;
@@ -17,6 +18,7 @@ export default function ServeurDashboard() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [clientType, setClientType] = useState<'chambre' | 'passage'>('chambre');
   const [clientNumber, setClientNumber] = useState('');
+  const [mealTime, setMealTime] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [printPreviewData, setPrintPreviewData] = useState<any>(null);
@@ -24,6 +26,7 @@ export default function ServeurDashboard() {
   const [showOpenOrders, setShowOpenOrders] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showPrinterManagement, setShowPrinterManagement] = useState(false);
 
   useEffect(() => {
     loadCategories();
@@ -165,16 +168,23 @@ export default function ServeurDashboard() {
 
     if (!validateClientNumber()) return;
 
+    if (!mealTime) {
+      alert('Veuillez sélectionner l\'heure du service');
+      return;
+    }
+
     try {
       const orderData = {
         clientName: getClientName(),
+        mealTime: mealTime,
         notes: notes.trim(),
         items: cart.map(item => ({
           productId: item.productId,
           productName: item.productName,
           quantity: item.quantity,
           price: item.price,
-          total: item.price * item.quantity
+          total: item.price * item.quantity,
+          categoryType: item.categoryType
         })),
         total: calculateTotal()
       };
@@ -183,30 +193,44 @@ export default function ServeurDashboard() {
       
       // Imprimer automatiquement
       try {
-        const printResult = await printService.printOrder(response.orderId);
+        await printService.printOrder(response.orderId);
         const ticketsData = await printService.getTicketsByDestination(response.orderId);
-        setPrintPreviewData(ticketsData);
+        
+        // Transformer les données pour le preview
+        const previewData = {
+          order: response,
+          tickets: {
+            bar: { items: [] },
+            cuisine: { items: [] }
+          }
+        };
+
+        // Grouper les tickets par destination
+        for (const ticket of ticketsData) {
+          if (ticket.destination === 'BAR') {
+            previewData.tickets.bar = ticket;
+          } else if (ticket.destination === 'CUISINE') {
+            previewData.tickets.cuisine = ticket;
+          }
+        }
+
+        setPrintPreviewData(previewData);
         setShowPrintPreview(true);
 
-        const printedInfo = printResult.results.printed.length > 0
-          ? `📄 Impression:\n` + printResult.results.printed.map((p: any) => 
-              `  • ${p.destination}: ${p.items} article(s) → ${p.printer}`
-            ).join('\n')
-          : '⚠️ Aucune imprimante configurée';
-
         alert(
-          `✅ Commande envoyée avec succès!\n\n` +
+          `✅ Commande créée avec succès!\n\n` +
           `Ticket N°: ${response.ticketNumber}\n\n` +
-          printedInfo
+          `📄 Envoyée aux écrans d'affichage`
         );
       } catch (printError) {
         console.error('Erreur impression:', printError);
-        alert(`✅ Commande créée (Ticket ${response.ticketNumber})\n⚠️ Erreur d'impression`);
+        alert(`✅ Commande créée (Ticket ${response.ticketNumber})\n⚠️ Erreur d'affichage`);
       }
 
       // Réinitialiser
       setCart([]);
       setClientNumber('');
+      setMealTime('');
       setNotes('');
       setSelectedOrder(null);
       loadOpenOrders();
@@ -272,45 +296,82 @@ export default function ServeurDashboard() {
 
   return (
     <div>
-      {/* Barre d'actions */}
-      <div style={{ marginBottom: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-        <button
-          onClick={() => {
-            loadOpenOrders();
-            setShowOpenOrders(true);
-          }}
-          style={{
-            padding: '0.5rem 1rem',
-            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '0.9rem'
-          }}
-        >
-          📋 Commandes en cours ({openOrders.length})
-        </button>
-        {selectedOrder && cart.length > 0 && (
+      {/* Afficher la gestion des imprimantes si demandé */}
+      {showPrinterManagement ? (
+        <div>
           <button
-            onClick={() => handleAddToExistingOrder(selectedOrder)}
+            onClick={() => setShowPrinterManagement(false)}
             style={{
-              padding: '0.5rem 1rem',
-              background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+              marginBottom: '1rem',
+              padding: '0.75rem 1.5rem',
+              background: '#666',
               color: 'white',
               border: 'none',
-              borderRadius: '6px',
+              borderRadius: '8px',
               cursor: 'pointer',
-              fontWeight: '600',
-              fontSize: '0.9rem',
-              animation: 'pulse 1.5s infinite'
+              fontWeight: '600'
             }}
           >
-            ✅ Ajouter à: {selectedOrder.clientName}
+            ← Retour aux commandes
           </button>
-        )}
-      </div>
+          <PrinterManagement />
+        </div>
+      ) : (
+        <>
+          {/* Barre d'actions */}
+          <div style={{ marginBottom: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={() => {
+                loadOpenOrders();
+                setShowOpenOrders(true);
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '0.9rem'
+              }}
+            >
+              📋 Commandes en cours ({openOrders.length})
+            </button>
+            <button
+              onClick={() => setShowPrinterManagement(true)}
+              style={{
+                padding: '0.5rem 1rem',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '0.9rem'
+              }}
+            >
+              🖨️ Imprimantes
+            </button>
+            {selectedOrder && cart.length > 0 && (
+              <button
+                onClick={() => handleAddToExistingOrder(selectedOrder)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '0.9rem',
+                  animation: 'pulse 1.5s infinite'
+                }}
+              >
+                ✅ Ajouter à: {selectedOrder.clientName}
+              </button>
+            )}
+          </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', height: 'calc(100vh - 180px)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -492,6 +553,22 @@ export default function ServeurDashboard() {
               }
             </select>
 
+            <input
+              type="time"
+              value={mealTime}
+              onChange={(e) => setMealTime(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: mealTime ? '2px solid #4CAF50' : '2px solid #ff6b6b',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                marginBottom: '0.5rem',
+                fontWeight: 'bold',
+                backgroundColor: mealTime ? '#fff' : '#ffe6e6'
+              }}
+            />
+
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -655,17 +732,17 @@ export default function ServeurDashboard() {
 
             <button
               onClick={handleSubmitOrder}
-              disabled={cart.length === 0 || !clientNumber}
+              disabled={cart.length === 0 || !clientNumber || !mealTime}
               style={{
                 width: '100%',
                 padding: '1rem',
-                background: cart.length === 0 || !clientNumber
+                background: cart.length === 0 || !clientNumber || !mealTime
                   ? '#ccc'
                   : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
-                cursor: cart.length === 0 || !clientNumber ? 'not-allowed' : 'pointer',
+                cursor: cart.length === 0 || !clientNumber || !mealTime ? 'not-allowed' : 'pointer',
                 fontSize: '1.1rem',
                 fontWeight: '600'
               }}
@@ -859,12 +936,12 @@ export default function ServeurDashboard() {
           }}>
             <h2>📄 Aperçu des tickets</h2>
             <p style={{ color: '#666', marginBottom: '1.5rem' }}>
-              Ticket: <strong>{printPreviewData.order.ticketNumber}</strong> | 
-              Client: <strong>{printPreviewData.order.clientName}</strong>
+              Ticket: <strong>{printPreviewData?.order?.ticketNumber}</strong> | 
+              Client: <strong>{printPreviewData?.order?.clientName || 'Sans nom'}</strong>
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-              {printPreviewData.tickets.bar.items.length > 0 && (
+              {printPreviewData?.tickets?.bar?.items && printPreviewData.tickets.bar.items.length > 0 && (
                 <div style={{ border: '2px solid #f5576c', borderRadius: '8px', padding: '1rem' }}>
                   <h3 style={{ color: '#f5576c', marginTop: 0 }}>🍹 BAR</h3>
                   {printPreviewData.tickets.bar.items.map((item: any, idx: number) => (
@@ -876,7 +953,7 @@ export default function ServeurDashboard() {
                 </div>
               )}
 
-              {printPreviewData.tickets.cuisine.items.length > 0 && (
+              {printPreviewData?.tickets?.cuisine?.items && printPreviewData.tickets.cuisine.items.length > 0 && (
                 <div style={{ border: '2px solid #00f2fe', borderRadius: '8px', padding: '1rem' }}>
                   <h3 style={{ color: '#00f2fe', marginTop: 0 }}>🍳 CUISINE</h3>
                   {printPreviewData.tickets.cuisine.items.map((item: any, idx: number) => (
@@ -907,6 +984,8 @@ export default function ServeurDashboard() {
             </button>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );

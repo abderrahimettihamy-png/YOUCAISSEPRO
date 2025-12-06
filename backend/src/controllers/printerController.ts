@@ -1,9 +1,11 @@
 import { Request, Response } from 'express';
 import { db } from '../config/database';
 import { AuthRequest } from '../middleware/auth';
+import { ThermalPrintService } from '../utils/thermalPrintService';
 
 const dbGet = (sql: string, params: any[] = []): Promise<any> => {
   return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('Database not initialized'));
     db.get(sql, params, (err, row) => {
       if (err) reject(err);
       else resolve(row);
@@ -13,6 +15,7 @@ const dbGet = (sql: string, params: any[] = []): Promise<any> => {
 
 const dbAll = (sql: string, params: any[] = []): Promise<any[]> => {
   return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('Database not initialized'));
     db.all(sql, params, (err, rows) => {
       if (err) reject(err);
       else resolve(rows);
@@ -22,6 +25,7 @@ const dbAll = (sql: string, params: any[] = []): Promise<any[]> => {
 
 const dbRun = (sql: string, params: any[] = []): Promise<any> => {
   return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('Database not initialized'));
     db.run(sql, params, function(err) {
       if (err) reject(err);
       else resolve({ lastID: this.lastID, changes: this.changes });
@@ -162,6 +166,40 @@ export class PrinterController {
       res.json(printer);
     } catch (error) {
       console.error('Erreur getByDestination printer:', error);
+      res.status(500).json({ error: 'Erreur serveur' });
+    }
+  }
+
+  // Tester une imprimante
+  static async testPrint(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const printer = await dbGet(
+        'SELECT * FROM printer_configs WHERE id = ?',
+        [id]
+      );
+
+      if (!printer) {
+        return res.status(404).json({ error: 'Imprimante non trouvée' });
+      }
+
+      // Test d'impression
+      const success = await ThermalPrintService.testPrint(printer);
+
+      if (success) {
+        res.json({ 
+          success: true, 
+          message: `Test d'impression envoyé vers ${printer.name}` 
+        });
+      } else {
+        res.status(500).json({ 
+          error: `Échec du test d'impression sur ${printer.name}`,
+          details: 'Vérifiez que l\'imprimante est connectée et allumée'
+        });
+      }
+    } catch (error) {
+      console.error('Erreur testPrint printer:', error);
       res.status(500).json({ error: 'Erreur serveur' });
     }
   }

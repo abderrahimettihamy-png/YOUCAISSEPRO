@@ -25,6 +25,8 @@ export default function PrinterManagement() {
     networkPort: 9100,
     isActive: true,
   });
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [testingPrinter, setTestingPrinter] = useState<number | null>(null);
 
   useEffect(() => {
     loadPrinters();
@@ -34,7 +36,9 @@ export default function PrinterManagement() {
     try {
       const data = await printerService.getAll();
       setPrinters(data);
+      setConnectionError(null);
     } catch (error) {
+      setConnectionError('Erreur de connexion au serveur. Vérifiez le réseau ou contactez le support.');
       console.error('Erreur chargement imprimantes:', error);
     }
   };
@@ -101,6 +105,24 @@ export default function PrinterManagement() {
     });
   };
 
+  const handleTestPrint = async (printer: PrinterConfig) => {
+    setTestingPrinter(printer.id!);
+    try {
+      // Appel de l'API backend pour impression thermique réelle
+      const result = await printerService.test(printer.id!);
+      
+      alert(`✅ ${result.message}\n\nVérifiez que l'imprimante a bien imprimé le ticket de test.`);
+      setTestingPrinter(null);
+
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || 'Erreur lors du test d\'impression';
+      const errorDetails = error.response?.data?.details || '';
+      
+      alert(`❌ ${errorMsg}\n\n${errorDetails}\n\nVérifiez :\n- L'imprimante est allumée\n- Le câble USB/Réseau est branché\n- Les drivers sont installés`);
+      setTestingPrinter(null);
+    }
+  };
+
   const groupedPrinters = {
     BAR: printers.filter(p => p.destination === 'BAR'),
     CUISINE: printers.filter(p => p.destination === 'CUISINE'),
@@ -108,6 +130,20 @@ export default function PrinterManagement() {
 
   return (
     <div>
+      {connectionError && (
+        <div style={{
+          background: '#ff4d4f',
+          color: 'white',
+          padding: '1rem',
+          borderRadius: '8px',
+          marginBottom: '1rem',
+          textAlign: 'center',
+          fontWeight: 'bold',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        }}>
+          {connectionError}
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h2 style={{ margin: 0 }}>🖨️ Configuration des Imprimantes</h2>
         <button
@@ -150,6 +186,8 @@ export default function PrinterManagement() {
                   printer={printer}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  onTest={handleTestPrint}
+                  isTesting={testingPrinter === printer.id}
                 />
               ))
             )}
@@ -179,6 +217,8 @@ export default function PrinterManagement() {
                   printer={printer}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  onTest={handleTestPrint}
+                  isTesting={testingPrinter === printer.id}
                 />
               ))
             )}
@@ -388,10 +428,12 @@ export default function PrinterManagement() {
   );
 }
 
-function PrinterCard({ printer, onEdit, onDelete }: {
+function PrinterCard({ printer, onEdit, onDelete, onTest, isTesting }: {
   printer: PrinterConfig;
   onEdit: (printer: PrinterConfig) => void;
   onDelete: (id: number) => void;
+  onTest: (printer: PrinterConfig) => void;
+  isTesting: boolean;
 }) {
   return (
     <div style={{
@@ -416,6 +458,21 @@ function PrinterCard({ printer, onEdit, onDelete }: {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={() => onTest(printer)}
+            disabled={isTesting}
+            style={{
+              padding: '0.5rem 1rem',
+              background: isTesting ? '#ccc' : '#4caf50',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: isTesting ? 'not-allowed' : 'pointer',
+              fontSize: '0.9rem',
+            }}
+          >
+            {isTesting ? '⏳' : '🖨️'}
+          </button>
           <button
             onClick={() => onEdit(printer)}
             style={{
