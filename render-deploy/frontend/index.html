@@ -22,8 +22,24 @@
     <link rel="modulepreload" crossorigin href="/assets/vendor-Dm_D0gIE.js">
     <link rel="modulepreload" crossorigin href="/assets/axios-VSpmzgsF.js">
     <link rel="stylesheet" crossorigin href="/assets/index-9mmiLbQz.css">
-  <link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
+  <link rel="manifest" href="/manifest.webmanifest"></head>
   <body>
+    <script>
+      // Désinscrire tous les service workers existants pour forcer le rechargement
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+      // Vider tous les caches
+      if ('caches' in window) {
+        caches.keys().then(function(names) {
+          for (let name of names) caches.delete(name);
+        });
+      }
+    </script>
     <div id="root"></div>
   </body>
 </html>
