@@ -1,7 +1,8 @@
 import axios from 'axios';
 import type { LoginRequest, LoginResponse, User, Order, DailySales, Category, Product } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// PRODUCTION: Hardcoded pour éviter les problèmes de cache
+const API_URL = 'https://youcaissepro-7pkp.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_URL,
