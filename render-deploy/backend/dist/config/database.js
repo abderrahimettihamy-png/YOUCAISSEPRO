@@ -202,6 +202,14 @@ async function initDatabase() {
       )
     `);
         console.log('✅ Base de données PostgreSQL initialisée avec succès');
+        // Créer un utilisateur admin par défaut si aucun utilisateur n'existe
+        const userCount = await pool.query('SELECT COUNT(*) as count FROM users');
+        if (userCount.rows[0].count === 0 || userCount.rows[0].count === '0') {
+            const bcrypt = require('bcryptjs');
+            const hashedPassword = await bcrypt.hash('admin123', 10);
+            await pool.query('INSERT INTO users (username, password, role, nom, prenom) VALUES ($1, $2, $3, $4, $5)', ['admin', hashedPassword, 'ADMIN', 'Administrateur', 'Système']);
+            console.log('✅ Utilisateur admin créé (username: admin, password: admin123)');
+        }
     }
     else if (db) {
         // SQLite - Tables de développement
