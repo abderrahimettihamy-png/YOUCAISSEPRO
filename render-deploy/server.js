@@ -1,6 +1,12 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
+
+// Forcer l'utilisation de SQLite si pas de DATABASE_URL
+if (!process.env.DATABASE_URL) {
+  process.env.NODE_ENV = 'development';
+}
+
 require('dotenv').config();
 const { initDatabase } = require('./backend/dist/config/database');
 
