@@ -2,12 +2,14 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 
-// Forcer l'utilisation de SQLite si pas de DATABASE_URL
-if (!process.env.DATABASE_URL) {
-  process.env.NODE_ENV = 'development';
-}
-
 require('dotenv').config();
+
+// Log de l'environnement pour debug
+console.log('=== Configuration Render ===');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+console.log('DATABASE_URL définie:', !!process.env.DATABASE_URL);
+
 const { initDatabase } = require('./backend/dist/config/database');
 
 const app = express();
