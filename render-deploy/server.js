@@ -63,11 +63,11 @@ function initDatabase() {
 }
 
 // API Routes (utiliser les fichiers compilés dans dist/)
-const authRouter = require('./backend/dist/routes/auth');
-const usersRouter = require('./backend/dist/routes/users');
-const ordersRouter = require('./backend/dist/routes/orders');
-const categoriesRouter = require('./backend/dist/routes/categories');
-const productsRouter = require('./backend/dist/routes/products');
+const authRouter = require('./backend/dist/routes/auth').default;
+const usersRouter = require('./backend/dist/routes/users').default;
+const ordersRouter = require('./backend/dist/routes/orders').default;
+const categoriesRouter = require('./backend/dist/routes/categories').default;
+const productsRouter = require('./backend/dist/routes/products').default;
 
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
