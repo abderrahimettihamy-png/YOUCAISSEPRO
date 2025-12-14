@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
@@ -74,6 +74,21 @@ function createWindow() {
 
 // Quand Electron est prêt
 app.whenReady().then(() => {
+  // Configuration CSP (Content Security Policy)
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const isDev = !app.isPackaged;
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          isDev 
+            ? "default-src 'self' 'unsafe-inline' 'unsafe-eval' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:* ws://localhost:* https://api.youcaisse.pro;"
+            : "default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:3001 https://api.youcaisse.pro;"
+        ]
+      }
+    });
+  });
+
   // Démarrer le backend
   startBackend();
   
